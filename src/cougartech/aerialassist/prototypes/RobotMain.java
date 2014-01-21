@@ -16,25 +16,27 @@ public class RobotMain extends IterativeRobot
     Encoder encoder;
     boolean wantShoot = false;
     boolean oneTime = false;
-    boolean readyForNext = false;
+    boolean reset = false;
     long sTime;
     long pTime;
     int movementPer = 61;
-    int motorTimeOut = 30000;
+    int motorTimeOut = 5000;
     double scaledCurrent;
     double resistance;
         
     public void robotInit()
     {
         joy = new Joystick(1);
+        
         try
         {
-        motor = new CANJaguar(10);
+            motor = new CANJaguar(10);
         }
         catch(CANTimeoutException ex)
         {
             ex.printStackTrace();
         }
+        
         nowTime = new Date();
         encoder = new Encoder(1, 2);
     }
@@ -48,15 +50,13 @@ public class RobotMain extends IterativeRobot
         System.out.println("Encoder: " + encoder.get());
         if(!oneTime)
         {
-            //pTime = nowTime.getTime();
-            //scaledCurrent = AnalogModule.getInstance(1).getVoltage(1);
-            //System.out.println("System Current Meter");
-            //System.out.println("0: " + scaledCurrent);
             encoder.start();
             
-            try{
+            try
+            {
                 motor.enableControl();
-            }catch(CANTimeoutException ex)
+            }
+            catch(CANTimeoutException ex)
             {
                 ex.printStackTrace();
             }
@@ -64,20 +64,12 @@ public class RobotMain extends IterativeRobot
             oneTime = true;
         }
         
-        //if((pTime + 10) >= nowTime.getTime())
-        //{
-        //    time = time + 10;
-        //    scaledCurrent = AnalogModule.getInstance(1).getVoltage(1);
-        //    pTime = nowTime.getTime();
-        //    System.out.println(time + ": " + scaledCurrent);
-        //}
-        //resistance = AnalogModule.getInstance(1).getVoltage(2) / amperes;
-        
+        //Acuation of arm
         if(wantShoot)
         {
+            //Motor timeout
             if((sTime + motorTimeOut) >= nowTime.getTime())
             {
-                encoder.reset();
                 try
                 {
                     motor.setX(0.0);
@@ -86,49 +78,68 @@ public class RobotMain extends IterativeRobot
                 {
                     ex.printStackTrace();
                 }
-                readyForNext = true;
+                
+                reset = true;
             }
             else
             {
-                /*if(encoder.get() >= movementPer)
+                //Foward Encoder Check
+                if(encoder.get() >= movementPer)
                 {
-                    motor.set(0.0);
-                    encoder.reset();
-                    readyForNext = true;
-                }*/
+                    try
+                    {
+                        motor.setX(0.0);
+                    }
+                    catch(CANTimeoutException ex)
+                    {
+                        
+                    }
+                    reset = true;
+                }
             }
         }
         else if(!wantShoot && joy.getRawButton(1))
         {
             sTime = nowTime.getTime();
-            //encoder.reset();
+            
             try
-                {
-                    motor.setX(1.0);
-                }
-                catch(CANTimeoutException ex)
-                {
-                    ex.printStackTrace();
-                }
+            {
+                motor.setX(1.0);
+            }
+            catch(CANTimeoutException ex)
+            {
+                ex.printStackTrace();
+            }
+            
             wantShoot = true;
         }
-        else
+        
+        //Reset of arm
+        if(reset)
         {
-            try
+            if(encoder.get() <= 0)
+            {
+                try
                 {
                     motor.setX(0.0);
                 }
                 catch(CANTimeoutException ex)
                 {
-                   
                     ex.printStackTrace();
                 }
-        }
-        
-        if(joy.getRawButton(3) && readyForNext)
-        {
-            wantShoot = false;
-            readyForNext = false;
+                wantShoot = false;
+            }
+            else
+            {
+                try
+                {
+                    motor.setX(-0.5);
+                }
+                catch(CANTimeoutException ex)
+                {
+                    ex.printStackTrace();
+                }
+            }
         }
     }
 }
