@@ -1,7 +1,7 @@
 package cougartech.aerialassist.prototypes;
 
 import edu.wpi.first.wpilibj.CANJaguar;
-import edu.wpi.first.wpilibj.Encoder;
+//import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.can.CANTimeoutException;
@@ -13,14 +13,14 @@ public class RobotMain extends IterativeRobot
     Joystick joy;
     CANJaguar motor;
     Date nowTime;
-    Encoder encoder;
     boolean wantShoot = false;
-    boolean oneTime = false;
+
     boolean reset = false;
     long sTime;
     long pTime;
     int movementPer = 61;
-    int motorTimeOut = 5000;
+    long motorTimeOut = 5000;
+    long timePer = 120;
     double scaledCurrent;
     double resistance;
         
@@ -38,7 +38,7 @@ public class RobotMain extends IterativeRobot
         }
         
         nowTime = new Date();
-        encoder = new Encoder(1, 2);
+        //encoder = new Encoder(1, 2);
     }
 
     public void autonomousPeriodic()
@@ -47,44 +47,32 @@ public class RobotMain extends IterativeRobot
 
     public void teleopPeriodic()
     {
-        System.out.println("Encoder: " + encoder.get());
-        if(!oneTime)
+        nowTime = new Date();
+    
+        try
         {
-            encoder.start();
-            
-            try
-            {
-                motor.enableControl();
-            }
-            catch(CANTimeoutException ex)
-            {
-                ex.printStackTrace();
-            }
-            
-            oneTime = true;
+            motor.enableControl();
         }
-        
-        //Acuation of arm
+        catch(CANTimeoutException ex)
+        {
+            ex.printStackTrace();
+        }
+      
         if(wantShoot)
         {
-            //Motor timeout
-            if((sTime + motorTimeOut) >= nowTime.getTime())
-            {
-                try
+                if(nowTime.getTime() < (sTime + timePer))
                 {
-                    motor.setX(0.0);
+                    try
+                    {
+                        motor.setX(1.0);
+                    }
+                    catch(CANTimeoutException ex)
+                    {
+                        ex.printStackTrace();
+                    }
+                    reset = true;
                 }
-                catch(CANTimeoutException ex)
-                {
-                    ex.printStackTrace();
-                }
-                
-                reset = true;
-            }
-            else
-            {
-                //Foward Encoder Check
-                if(encoder.get() >= movementPer)
+                else
                 {
                     try
                     {
@@ -92,54 +80,20 @@ public class RobotMain extends IterativeRobot
                     }
                     catch(CANTimeoutException ex)
                     {
-                        
+                        ex.printStackTrace();
                     }
-                    reset = true;
                 }
-            }
-        }
+         }
         else if(!wantShoot && joy.getRawButton(1))
         {
             sTime = nowTime.getTime();
-            
-            try
-            {
-                motor.setX(1.0);
-            }
-            catch(CANTimeoutException ex)
-            {
-                ex.printStackTrace();
-            }
-            
             wantShoot = true;
+            
         }
         
-        //Reset of arm
         if(reset)
         {
-            if(encoder.get() <= 0)
-            {
-                try
-                {
-                    motor.setX(0.0);
-                }
-                catch(CANTimeoutException ex)
-                {
-                    ex.printStackTrace();
-                }
-                wantShoot = false;
-            }
-            else
-            {
-                try
-                {
-                    motor.setX(-0.5);
-                }
-                catch(CANTimeoutException ex)
-                {
-                    ex.printStackTrace();
-                }
-            }
+            
         }
     }
 }
